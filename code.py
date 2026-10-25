@@ -1,3 +1,4 @@
+# we need to initialize each circuitpython library
 import board
 import keypad
 import usb_hid
@@ -6,8 +7,8 @@ from adafruit_hid.keycode import Keycode
 
 # we need to initialize each pin. do not change this unless you want to change which pins to enable and disable.
 key_pins = (
-    board.GP0,   #UART TX Line. This is a serial transmit line. We will steal it cuz we need as many pins as possible.
-    board.GP1,   #UART RX Line. This is a serial recieve line. We will steal it cuz we already stole the transmit line lol
+    board.GP0,   #UART TX Line. This is usually the serial transmit line. We will steal it cuz we need as many pins as possible.
+    board.GP1,   #UART RX Line. This is usually the serial recieve line. We will steal it cuz we already stole the transmit line lol
     board.GP2,
     board.GP3,
     board.GP4,
@@ -31,39 +32,40 @@ key_pins = (
     board.GP22,
     board.GP26,
     board.GP27,
-#   board.GP28, #GP28 controls Pico LED activity. You can steal it if you absolutely need one more input. I left out any LED input routines from the code just for this.
+    board.GP28, #GP28 normally controls Pico LED activity. I left out any LED input routines from the code just to have an additional function pin.
 )
 
 
-# We need to map which keyboard keys will go to the the above hardware pins. Keys are currently mapped to MAME default keys.
+#EDIT YOUR KEYS HERE! We need to map which keyboard keys will go to the the above hardware pins. Keys are currently mapped to MAME default keys.
 keymap = (
-    Keycode.ONE,     #player1 start
-    Keycode.FIVE,     #player1 coin
-    Keycode.UP_ARROW,     #player1 up
-    Keycode.DOWN_ARROW,     #player1 down
-    Keycode.LEFT_ARROW,     #player1 left
-    Keycode.RIGHT_ARROW,     #player1 right
-    Keycode.LEFT_CONTROL,     #player1 button1
-    Keycode.LEFT_ALT,     #player1 button2
-    Keycode.SPACEBAR,     #player1 button3
-    Keycode.LEFT_SHIFT,     #player1 button4
-    Keycode.Z,     #player1 button5
-    Keycode.X,     #player1 button6
-    Keycode.TWO,     #player2 start
-    Keycode.SIX,     #player2 coin
-    Keycode.R,     #player2 up
-    Keycode.F,     #player2 down
-    Keycode.D,     #player2 left
-    Keycode.G,     #player2 right
-    Keycode.A,     #player2 button1
-    Keycode.S,     #player2 button2
-    Keycode.Q,     #player2 button3
-    Keycode.W,     #player2 button4
-    Keycode.I,     #player2 button5
-    Keycode.K,     #player2 button6
-    Keycode.ESCAPE,     #Exit
+    Keycode.ONE,          #GP0 player1 start
+    Keycode.FIVE,         #GP1 player1 coin
+    Keycode.UP_ARROW,     #GP2 player1 up
+    Keycode.DOWN_ARROW,   #GP3 player1 down
+    Keycode.LEFT_ARROW,   #GP4 player1 left
+    Keycode.RIGHT_ARROW,  #GP5 player1 right
+    Keycode.LEFT_CONTROL, #GP6 player1 button1
+    Keycode.LEFT_ALT,     #GP7 player1 button2
+    Keycode.SPACEBAR,     #GP8 player1 button3
+    Keycode.LEFT_SHIFT,   #GP9 player1 button4
+    Keycode.Z,            #GP10 player1 button5
+    Keycode.X,            #GP11 player1 button6
+    Keycode.TWO,          #GP12 player2 start
+    Keycode.SIX,          #GP13 player2 coin
+    Keycode.R,            #GP14 player2 up
+    Keycode.F,            #GP15 player2 down
+    Keycode.D,            #GP16 player2 left
+    Keycode.G,            #GP17 player2 right
+    Keycode.A,            #GP18 player2 button1
+    Keycode.S,            #GP19 player2 button2
+    Keycode.Q,            #GP20 player2 button3
+    Keycode.W,            #GP21 player2 button4
+    Keycode.I,            #GP22 player2 button5
+    Keycode.K,            #GP26 player2 button6
+    Keycode.ESCAPE,       #GP27 Exit
+    Keycode.TAB,          #GP28 Tab
 )
-
+# do not edit the functions below unless you know what you are doing
 keys = keypad.Keys(key_pins, value_when_pressed=False, pull=True)
 
 
