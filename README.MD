@@ -22,15 +22,9 @@ Instructions:
 
 &#x20;   Download Picoder, decompress and dump the contents of the folder into the root of your Pico drive. Your PC should ask if you would like to overwrite files. Click yes.
 
-&#x20;   This last step is important. Standard HID descriptor only allows 6 simultaneous button presses. Picoder uses N-Key Rollover to get around this limitation. To enable N-Key Rollover you need to reset your Pico. See the default pinout image below to find the reset pin or Flip your Pico upside down and use a short piece of wire to short the 'RUN' pin to any ground on the board. Your Pico should reset. To verify if N-Key Rollover is activated open the Boot\_out.txt file in your pico. The final string at the bottom should read " enabled HID with custom keyboard device" if you have done this successfully. If you do not do this final step correctly, you will be stuck with a 6 simultaneous key limitation.
+&#x20;   This last step is important. Standard HID descriptor only allows 6 simultaneous button presses. Picoder uses N-Key Rollover to get around this limitation. To enable N-Key Rollover you need to reset your Pico. See the default pinout image below to find the reset pin or Flip your Pico upside down and use a short piece of wire to short the 'RUN' pin to any ground on the board. Your Pico should reset. You can confirm that BOOT+NKRO descriptor is enabled by opening the boot\_out.txt. The string "enabled HID with hybrid NKRO keyboard" should appear.
 
-
-
-You can confirm that BOOT+NKRO descriptor is enabled by opening the boot\_out.txt. The string "enabled HID with hybrid NKRO keyboard" should appear.
-
-
-
-You can test your keys and Rollover code by using Microsoft's Keyboard Ghosting Demo
+See provided picoder_pinout.jpg for the standard corresponding pins. You can test your keys and Rollover code by using Microsoft's Keyboard Ghosting Demo
 
 https://www.microsoft.com/applied-sciences/projects/anti-ghosting-demo
 
