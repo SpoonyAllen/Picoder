@@ -6,7 +6,7 @@ This is a low cost, low-overhead keyboard encoder script for the Raspberry Pi Pi
 
 Instructions:
 
-&#x20;   Download the CircuitPython 10x UF2 bootloader from https://circuitpython.org/board/raspberry\_pi\_pico/
+&#x20;   Download the CircuitPython 10x UF2 bootloader from https://circuitpython.org/board/raspberry_pi_pico/
 
 &#x20;   Hold the BOOTSEL button down on your raspberry pi pico and then plug your Pico into your PC using a USB cable. Your Pico should appear as a usb mass storage device on your PC.
 
