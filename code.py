@@ -5,10 +5,13 @@ import usb_hid
 from adafruit_hid.keyboard import Keyboard, find_device
 from adafruit_hid.keycode import Keycode
 
+#Set which pin will be used for your shift function
+LAYER_PIN_INDEX = 0
+
 # we need to initialize each pin. do not change this unless you want to change which pins to enable and disable.
 key_pins = (
-    board.GP0,   #UART TX Line. This is usually the serial transmit line. We will steal it cuz we need as many pins as possible.
-    board.GP1,   #UART RX Line. This is usually the serial recieve line. We will steal it cuz we already stole the transmit line lol
+    board.GP0,   # layer hold / tap for normal key
+    board.GP1,
     board.GP2,
     board.GP3,
     board.GP4,
@@ -32,13 +35,12 @@ key_pins = (
     board.GP22,
     board.GP26,
     board.GP27,
-    board.GP28, #GP28 normally controls Pico LED activity. I left out any LED input routines from the code just to have an additional function pin.
+    board.GP28,
 )
 
-
-#EDIT YOUR KEYS HERE! We need to map which keyboard keys will go to the the above hardware pins. Keys are currently mapped to MAME default keys.
+#EDIT YOUR NORMAL KEYS HERE! We need to map which keyboard keys will go to the the above hardware pins. Keys are currently mapped to MAME default keys.
 keymap = (
-    Keycode.ONE,          #GP0 player1 start
+    Keycode.ONE,          #GP0 player1 start - also default shifted layer key
     Keycode.FIVE,         #GP1 player1 coin
     Keycode.UP_ARROW,     #GP2 player1 up
     Keycode.DOWN_ARROW,   #GP3 player1 down
@@ -65,6 +67,36 @@ keymap = (
     Keycode.ESCAPE,       #GP27 Exit
     Keycode.TAB,          #GP28 Tab
 )
+
+#EDIT YOUR SHIFTED KEYS HERE! We need to map which keyboard keys will go to the the above hardware pins. Keys are currently mapped to MAME default keys. Standard shift key is GP0
+layer_keymap = (
+    None,                 # GP0  — never sends from shifted layer table
+    Keycode.F1,           # GP1
+    Keycode.F2,           # GP2
+    Keycode.F3,           # GP3
+    Keycode.F4,           # GP4
+    Keycode.F5,           # GP5
+    Keycode.F6,           # GP6
+    Keycode.F7,           # GP7
+    Keycode.F8,           # GP8
+    Keycode.F9,           # GP9
+    Keycode.F10,          # GP10
+    Keycode.F11,          # GP11
+    Keycode.F12,          # GP12
+    Keycode.P,            # GP13
+    Keycode.ESCAPE,       # GP14
+    Keycode.U,            # GP15
+    Keycode.Y,            # GP16
+    Keycode.T,            # GP17
+    Keycode.H,            # GP18
+    Keycode.J,            # GP19
+    Keycode.L,            # GP20
+    Keycode.M,            # GP21
+    Keycode.N,            # GP22
+    Keycode.B,            # GP26
+    Keycode.ENTER,        # GP27
+    Keycode.BACKSPACE,    # GP28
+)
 # do not edit the functions below unless you know what you are doing
 keys = keypad.Keys(key_pins, value_when_pressed=False, pull=True)
 
@@ -72,17 +104,14 @@ keys = keypad.Keys(key_pins, value_when_pressed=False, pull=True)
 class HybridKeyboard(Keyboard):
     def __init__(self, devices):
         device = find_device(devices, usage_page=0x01, usage=0x06)
-
         try:
             device.send_report(b"\0" * 24)
-            print("OK: 24-byte report accepted")
-        except ValueError as e:
-            print("ERROR: device rejected 24-byte report:", e)
+        except ValueError:
+            print("ERROR: device rejected 24-byte report — check boot.py")
             raise
 
         self._keyboard_device = device
         self.report = bytearray(24)
-        # [0] modifiers | [1] reserved | [2:8] boot key slots | [8:24] NKRO bitmap
         self.report_modifier = memoryview(self.report)[0:1]
         self.report_keys = memoryview(self.report)[2:8]
         self.report_bitmap = memoryview(self.report)[8:]
@@ -93,7 +122,6 @@ class HybridKeyboard(Keyboard):
             self.report_modifier[0] |= modifier
             return
 
-        # Boot slots (first 6 non-modifier keys)
         for i in range(6):
             if self.report_keys[i] == 0:
                 self.report_keys[i] = keycode
@@ -101,12 +129,10 @@ class HybridKeyboard(Keyboard):
             if self.report_keys[i] == keycode:
                 break
         else:
-            # Rotate oldest out
             for i in range(5):
                 self.report_keys[i] = self.report_keys[i + 1]
             self.report_keys[5] = keycode
 
-        # NKRO bitmap
         self.report_bitmap[keycode >> 3] |= 1 << (keycode & 0x07)
 
     def _remove_keycode_from_report(self, keycode):
@@ -136,17 +162,50 @@ class HybridKeyboard(Keyboard):
         self._keyboard_device.send_report(self.report)
 
 
-print("Looking for keyboard device...")
-print("usb_hid.devices:", usb_hid.devices)
 kbd = HybridKeyboard(usb_hid.devices)
-print("HybridKeyboard ready")
+
+layer_held = False
+layer_used = False          # True if any other key was pressed while GP0 held
+active_keycodes = [None] * len(key_pins)
 
 while True:
     ev = keys.events.get()
-    if ev is not None:
-        key = keymap[ev.key_number]
-        print("pin", ev.key_number, "keycode", key, "pressed" if ev.pressed else "released")
+    if ev is None:
+        continue
+
+    idx = ev.key_number
+
+    # ----- Layer key (GP0): tap = normal key on release, hold = layer -----
+    if idx == LAYER_PIN_INDEX:
         if ev.pressed:
-            kbd.press(key)
+            layer_held = True
+            layer_used = False
         else:
+            # Released: only send normal key if layer was never used
+            if not layer_used:
+                tap_key = keymap[LAYER_PIN_INDEX]
+                if tap_key is not None:
+                    kbd.press(tap_key)
+                    kbd.release(tap_key)
+            layer_held = False
+            layer_used = False
+        continue
+
+    # ----- All other keys -----
+    if ev.pressed:
+        if layer_held:
+            layer_used = True
+            key = layer_keymap[idx]
+        else:
+            key = keymap[idx]
+
+        if key is None:
+            continue
+
+        active_keycodes[idx] = key
+        kbd.press(key)
+    else:
+        key = active_keycodes[idx]
+        if key is not None:
             kbd.release(key)
+            active_keycodes[idx] = None
