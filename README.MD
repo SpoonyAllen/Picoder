@@ -1,4 +1,4 @@
-This is a low cost, low-overhead keyboard encoder script for the Raspberry Pi Pico RP2040 devices. It is based on original code examples from Jeff Epler and the original Picoder code from Don Panetta at the KLOV message board. It has been updated by me to support the latest circuitphython and hybrid boot+NKRO HID descriptor. It will allow you to have a no-frills, full 2 player six button setup for your MAME arcade or indie game project without the high cost of a Ultimarc Ipac. The code is written in Python using the circuitpython bootloader and libraries. You will need to install the CircuitPython boot-loader then write the Picoder code and libraries. It's a small process so please follow the instructions carefully.
+This is a low cost, low-overhead keyboard encoder script for the Raspberry Pi Pico RP2040 devices. It is based on original code examples from Jeff Epler and the original Picoder code from Don Panetta at the KLOV message board. It has been updated by me to support the latest circuitphython and hybrid boot+NKRO HID descriptor. It will allow you to have a no-frills, full 2 player six button setup for your MAME arcade or indie game project without the high cost of a Ultimarc Ipac. The latest build also includes a shifted function to add additional keys for utility functions, shortcuts etc. The code is written in Python using the circuitpython bootloader and libraries. You will need to install the CircuitPython boot-loader then write the Picoder code and libraries. It's a small process so please follow the instructions carefully.
 
 
 
@@ -20,7 +20,7 @@ See provided picoder_pinout.jpg for the standard corresponding pins. You can tes
 https://www.microsoft.com/applied-sciences/projects/anti-ghosting-demo
 
 Editing keys:
-&#x20;   Open code.py and find the section entitled #EDIT YOUR KEYS HERE!. There you will find the keys corresponding to each pin. This requires using circuitpythons keycodes. See circuitpythons keycode.py for more keycodes.
+&#x20;   Open code.py and find the section entitled #EDIT YOUR NORMAL KEYS HERE!. There you will find the normal/standard keys corresponding to each pin. Directly below that is your shifted layer keys. Edit these to add additional functionality for your shifted keys function. modifying the keycodes requires using the circuitpythons keycodes. See circuitpythons keycode.py for more keycodes.
 https://github.com/adafruit/Adafruit_CircuitPython_HID/blob/main/adafruit_hid/keycode.py
 
 ![](picoder_pinout.jpg)
