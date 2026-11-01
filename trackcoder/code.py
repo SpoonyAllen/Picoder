@@ -3,7 +3,7 @@
 # 0.1a Basic happ trackball support
 # 0.2 Supports up to 3 trackballs
 # 0.3 Added mouse buttons, sensitivity multiplier and inverting X and Y axis
-
+# 0.5 Added support for Z-axis and EC11 encoder support
 import board
 import digitalio
 import rotaryio
