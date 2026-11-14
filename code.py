@@ -1,9 +1,17 @@
-# we need to initialize each circuitpython library
+#
+# PICOder - hybrid NKRO keyboard encoder focused on MAME 
+# GP0 = layer hold; tap GP0 alone sends keymap[0] on release
+#
+
+import time
 import board
 import keypad
 import usb_hid
 from adafruit_hid.keyboard import Keyboard, find_device
 from adafruit_hid.keycode import Keycode
+
+# How long a "tap" key is held so the host sees it (seconds)
+TAP_HOLD_S = 0.03
 
 #Set which pin will be used for your shift function
 LAYER_PIN_INDEX = 0
@@ -97,8 +105,17 @@ layer_keymap = (
     Keycode.ENTER,        # GP27
     Keycode.BACKSPACE,    # GP28
 )
+
 # do not edit the functions below unless you know what you are doing
-keys = keypad.Keys(key_pins, value_when_pressed=False, pull=True)
+assert len(key_pins) == len(keymap) == len(layer_keymap)
+
+keys = keypad.Keys(
+    key_pins,
+    value_when_pressed=False,
+    pull=True,
+    interval=0.02,
+    max_events=64,
+)
 
 
 class HybridKeyboard(Keyboard):
@@ -143,12 +160,12 @@ class HybridKeyboard(Keyboard):
 
         j = 0
         for i in range(6):
-            pressed = self.report_keys[i]
-            if pressed == 0:
+            pressed_key = self.report_keys[i]
+            if pressed_key == 0:
                 break
-            if pressed == keycode:
+            if pressed_key == keycode:
                 continue
-            self.report_keys[j] = pressed
+            self.report_keys[j] = pressed_key
             j += 1
         while j < 6:
             self.report_keys[j] = 0
@@ -164,48 +181,54 @@ class HybridKeyboard(Keyboard):
 
 kbd = HybridKeyboard(usb_hid.devices)
 
-layer_held = False
-layer_used = False          # True if any other key was pressed while GP0 held
+pressed = [False] * len(key_pins)
+layer_used = False
 active_keycodes = [None] * len(key_pins)
 
+
+def layer_is_held():
+    return pressed[LAYER_PIN_INDEX]
+
+
 while True:
-    ev = keys.events.get()
-    if ev is None:
-        continue
+    while True:
+        ev = keys.events.get()
+        if ev is None:
+            break
 
-    idx = ev.key_number
+        idx = ev.key_number
 
-    # ----- Layer key (GP0): tap = normal key on release, hold = layer -----
-    if idx == LAYER_PIN_INDEX:
-        if ev.pressed:
-            layer_held = True
-            layer_used = False
-        else:
-            # Released: only send normal key if layer was never used
-            if not layer_used:
-                tap_key = keymap[LAYER_PIN_INDEX]
-                if tap_key is not None:
-                    kbd.press(tap_key)
-                    kbd.release(tap_key)
-            layer_held = False
-            layer_used = False
-        continue
-
-    # ----- All other keys -----
-    if ev.pressed:
-        if layer_held:
-            layer_used = True
-            key = layer_keymap[idx]
-        else:
-            key = keymap[idx]
-
-        if key is None:
+        # ----- Layer key (GP0) -----
+        if idx == LAYER_PIN_INDEX:
+            if ev.pressed:
+                pressed[idx] = True
+                layer_used = False
+            else:
+                pressed[idx] = False
+                if not layer_used:
+                    tap_key = keymap[LAYER_PIN_INDEX]
+                    if tap_key is not None:
+                        kbd.press(tap_key)
+                        time.sleep(TAP_HOLD_S)
+                        kbd.release(tap_key)
+                layer_used = False
             continue
 
-        active_keycodes[idx] = key
-        kbd.press(key)
-    else:
-        key = active_keycodes[idx]
-        if key is not None:
-            kbd.release(key)
-            active_keycodes[idx] = None
+        # ----- Other keys -----
+        if ev.pressed:
+            pressed[idx] = True
+            if layer_is_held():
+                layer_used = True
+                key = layer_keymap[idx]
+            else:
+                key = keymap[idx]
+            if key is None:
+                continue
+            active_keycodes[idx] = key
+            kbd.press(key)
+        else:
+            pressed[idx] = False
+            key = active_keycodes[idx]
+            if key is not None:
+                kbd.release(key)
+                active_keycodes[idx] = None
