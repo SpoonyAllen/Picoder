@@ -26,7 +26,12 @@ See provided picoder_pinout.jpg for the standard corresponding pins. You can tes
 https://www.microsoft.com/applied-sciences/projects/anti-ghosting-demo
 
 Editing keys:
-&#x20;   Open code.py and find the section entitled #EDIT YOUR NORMAL KEYS HERE!. There you will find the normal/standard keys corresponding to each pin. Directly below that is your shifted layer keys. Edit these to add additional functionality for your shifted keys function. modifying the keycodes requires using the circuitpythons keycodes. See circuitpythons keycode.py for more keycodes.
-https://github.com/adafruit/Adafruit_CircuitPython_HID/blob/main/adafruit_hid/keycode.py
+&#x20;   Open your pico's storage drive and open picoder-config.html using your favorite web browser. Chrome and Chromium derivative browsers will allow you to edit your entire circuitpython directory from within the browser. Simply click on the "Link to circuitpython" button at the top and Chrome based browsers will automatically load the keymap that is currently on your pico. If you are using other browsers you will have to load your keymap by clicking on the "Load JSON" link and pointing your browser to the location of your JSON. By manually loading and saving your JSON keymap file you can also have multiple keymap configurations saved on your Pico's drive. 
 
+Editing keys is a simple as clicking on the corresponding pin on the web image of the pico and changing the key in the dropdown menu. 
+
+![](picoder_web_config.jpg)
+
+Default Keys:
+Picoder is configured out of the box to have the following key configuration mapped to MAME.
 ![](picoder_pinout.jpg)
