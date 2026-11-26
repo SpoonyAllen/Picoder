@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Picoder — Pico Pin Keymap Editor</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #151c27;
+    --border: #2a3548;
+    --text: #e8eef7;
+    --muted: #8b9bb4;
+    --accent: #3d8bfd;
+    --accent2: #2dd4a8;
+    --layer-pin: #e8a838;
+    --selected: #ff4d6d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: system-ui, Segoe UI, Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.35;
+  }
+  header {
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    display: flex; flex-wrap: wrap; gap: 0.6rem;
+    align-items: center; justify-content: space-between;
+  }
+  h1 { margin: 0; font-size: 1.1rem; font-weight: 600; }
+  .actions { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
+  button, label.btn {
+    background: var(--accent); color: #fff; border: none;
+    padding: 0.4rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.88rem;
+  }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.secondary, label.btn.secondary { background: #334155; }
+  button.good { background: var(--accent2); color: #053; }
+  input[type="file"] { display: none; }
+  .status { font-size: 0.8rem; color: var(--muted); max-width: 260px; }
+  .status.ok { color: var(--accent2); }
+  .status.err { color: #f87171; }
+  main {
+    display: grid;
+    grid-template-columns: 1fr minmax(280px, 340px);
+    gap: 1rem;
+    padding: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+  }
+  .board-wrap {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem;
+    overflow: auto;
+  }
+  .board-wrap svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .side {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem;
+    align-self: start;
+  }
+  .side h2 { margin: 0 0 0.75rem; font-size: 0.95rem; }
+  .side label { display: block; font-size: 0.75rem; color: var(--muted); margin: 0.55rem 0 0.2rem; }
+  .side select, .side input {
+    width: 100%; padding: 0.4rem;
+    border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text);
+  }
+  .hint { color: var(--muted); font-size: 0.82rem; margin: 0 0 0.75rem; }
+  .meta { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem; }
+  .pin-title { font-family: ui-monospace, monospace; color: var(--accent2); font-size: 1.05rem; }
+  .selected-none { color: var(--muted); font-size: 0.9rem; }
+  .pin-hit { cursor: pointer; }
+  .pin-fixed { cursor: default; }
+  footer { grid-column: 1 / -1; color: var(--muted); font-size: 0.78rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Picoder — Pico pin keymap</h1>
+  <div class="actions">
+    <label class="btn secondary">Load JSON<input type="file" id="load" accept=".json,application/json" /></label>
+    <button type="button" class="secondary" id="btnFolder">Link CIRCUITPY folder</button>
+    <button type="button" class="secondary" id="btnReload" disabled>Reload from CIRCUITPY</button>
+    <button type="button" class="good" id="btnSaveFolder" disabled>Save to CIRCUITPY</button>
+    <button type="button" class="good" id="btnSaveAs">Save as…</button>
+    <button type="button" class="secondary" id="btnDownload">Download</button>
+    <button type="button" class="secondary" id="reset">MAME defaults</button>
+    <span class="status" id="status"></span>
+  </div>
+</header>
+<main>
+  <div class="board-wrap">
+    <p class="hint" style="padding:0 0.25rem">
+      <strong style="color:#ff4d6d">Red outline + glow</strong> = pin being edited ·
+      Blue = mapped · Gold = layer pin ·
+      Grey = GND/power/RUN (not editable).
+      In Chrome/Edge: <em>Link CIRCUITPY folder</em> auto-loads <code>keymap.json</code>.
+    </p>
+    <svg id="pico" viewBox="0 0 420 620" xmlns="http://www.w3.org/2000/svg" aria-label="Raspberry Pi Pico pinout"></svg>
+  </div>
+  <div class="side">
+    <h2>Selected pin</h2>
+    <div id="selInfo" class="selected-none">Click a blue/gold GPIO pin on the board</div>
+    <div id="editor" hidden>
+      <div class="pin-title" id="selPin">GP0</div>
+      <label for="selLabel">Label</label>
+      <input id="selLabel" type="text" placeholder="e.g. P1 Coin" />
+      <label for="selBase">Base key</label>
+      <select id="selBase"></select>
+      <label for="selLayer">Layer key (while layer pin held)</label>
+      <select id="selLayer"></select>
+    </div>
+    <hr style="border-color:var(--border);margin:1rem 0" />
+    <div class="meta">
+      <div>
+        <label for="layerPin">Layer pin index</label>
+        <input id="layerPin" type="number" min="0" step="1" value="0" />
+      </div>
+      <div>
+        <label for="tapHold">Tap hold (s)</label>
+        <input id="tapHold" type="number" min="0.01" step="0.01" value="0.03" />
+      </div>
+    </div>
+    <p class="hint">After saving to CIRCUITPY, reset the Pico so <code>code.py</code> reloads the map.</p>
+  </div>
+  <footer>
+    File System Access API: Chrome / Edge. Firefox / Safari: use Load JSON + Download.
+    Only GPIOs listed in <code>pins</code> are editable.
+  </footer>
+</main>
+<script>
+const KEYS = [
+  "NONE",
+  "A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z",
+  "ONE","TWO","THREE","FOUR","FIVE","SIX","SEVEN","EIGHT","NINE","ZERO",
+  "ENTER","ESCAPE","BACKSPACE","TAB","SPACE",
+  "MINUS","EQUALS","LEFT_BRACKET","RIGHT_BRACKET","BACKSLASH","SEMICOLON","QUOTE","GRAVE",
+  "COMMA","PERIOD","FORWARD_SLASH","CAPS_LOCK",
+  "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
+  "PRINT_SCREEN","SCROLL_LOCK","PAUSE",
+  "INSERT","HOME","PAGE_UP","DELETE","END","PAGE_DOWN",
+  "RIGHT_ARROW","LEFT_ARROW","DOWN_ARROW","UP_ARROW",
+  "LEFT_CONTROL","LEFT_SHIFT","LEFT_ALT","LEFT_GUI",
+  "RIGHT_CONTROL","RIGHT_SHIFT","RIGHT_ALT","RIGHT_GUI",
+  "APPLICATION",
+  "KEYPAD_ONE","KEYPAD_TWO","KEYPAD_THREE","KEYPAD_FOUR","KEYPAD_FIVE",
+  "KEYPAD_SIX","KEYPAD_SEVEN","KEYPAD_EIGHT","KEYPAD_NINE","KEYPAD_ZERO",
+  "KEYPAD_PERIOD","KEYPAD_ENTER","KEYPAD_PLUS","KEYPAD_MINUS",
+  "KEYPAD_ASTERISK","KEYPAD_FORWARD_SLASH","KEYPAD_NUMLOCK"
+];
+
+const DEFAULT = {
+  layer_pin_index: 0,
+  tap_hold_s: 0.03,
+  pins: [
+    "GP0","GP1","GP2","GP3","GP4","GP5","GP6","GP7","GP8","GP9","GP10","GP11",
+    "GP12","GP13","GP14","GP15","GP16","GP17","GP18","GP19","GP20","GP21","GP22",
+    "GP26","GP27","GP28"
+  ],
+  labels: [
+    "P1 Start / Layer","P1 Coin","P1 Up","P1 Down","P1 Left","P1 Right",
+    "P1 B1","P1 B2","P1 B3","P1 B4","P1 B5","P1 B6",
+    "P2 Start","P2 Coin","P2 Up","P2 Down","P2 Left","P2 Right",
+    "P2 B1","P2 B2","P2 B3","P2 B4","P2 B5","P2 B6",
+    "Exit","MAME Menu"
+  ],
+  keymap: [
+    "ONE","FIVE","UP_ARROW","DOWN_ARROW","LEFT_ARROW","RIGHT_ARROW",
+    "LEFT_CONTROL","LEFT_ALT","SPACE","LEFT_SHIFT","Z","X",
+    "TWO","SIX","R","F","D","G","A","S","Q","W","I","K","ESCAPE","TAB"
+  ],
+  layer_keymap: [
+    null,"F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12",
+    "P","O","U","Y","T","H","J","L","M","N","B","ENTER","BACKSPACE"
+  ]
+};
+
+const LEFT_PINS = [
+  "GP0","GP1","GND","GP2","GP3","GP4","GP5","GND","GP6","GP7","GP8","GP9","GND",
+  "GP10","GP11","GP12","GP13","GND","GP14","GP15"
+];
+const RIGHT_PINS = [
+  "VBUS","VSYS","GND","3V3_EN","3V3_OUT","ADC_VREF","GP28","GND","GP27","GP26",
+  "RUN","GP22","GND","GP21","GP20","GP19","GP18","GND","GP17","GP16"
+];
+
+const BLOCKED_PINS = new Set([
+  "GND", "VBUS", "VSYS", "3V3_EN", "3V3_OUT", "3V3", "ADC_VREF", "RUN",
+  "SWCLK", "SWDIO", "TP1", "TP2", "TP3", "TP4"
+]);
+
+let state = structuredClone(DEFAULT);
+let selectedPin = null;
+/** @type {FileSystemDirectoryHandle|null} */
+let dirHandle = null;
+
+const canFS = typeof window.showDirectoryPicker === "function";
+const canSavePicker = typeof window.showSaveFilePicker === "function";
+
+function setStatus(msg, kind) {
+  const el = document.getElementById("status");
+  el.textContent = msg || "";
+  el.className = "status" + (kind ? " " + kind : "");
+}
+
+function isEditablePin(name) {
+  if (BLOCKED_PINS.has(name)) return false;
+  if (!/^GP\d+$/i.test(name)) return false;
+  return pinIndex(name) >= 0;
+}
+
+function normKey(v) {
+  if (v == null || v === "" || v === "NONE" || v === "None") return "NONE";
+  return String(v).toUpperCase().replace(/ /g, "_");
+}
+
+function shortKey(v) {
+  const k = normKey(v);
+  if (k === "NONE") return "";
+  return k
+    .replace("LEFT_", "L").replace("RIGHT_", "R").replace("ARROW", "")
+    .replace("CONTROL", "CTRL").replace("SPACEBAR", "SPC").replace("SPACE", "SPC")
+    .replace("ESCAPE", "ESC").replace("BACKSPACE", "BSP").replace("KEYPAD_", "KP");
+}
+
+function pinIndex(name) {
+  return state.pins.indexOf(name);
+}
+
+function fillSelect(sel, selected) {
+  const s = normKey(selected);
+  sel.innerHTML = KEYS.map(k =>
+    `<option value="${k}"${k === s ? " selected" : ""}>${k === "NONE" ? "— none —" : k}</option>`
+  ).join("");
+}
+
+function applyLoadedData(data) {
+  state = {
+    layer_pin_index: data.layer_pin_index ?? 0,
+    tap_hold_s: data.tap_hold_s ?? 0.03,
+    pins: data.pins || DEFAULT.pins,
+    labels: data.labels || [],
+    keymap: data.keymap || [],
+    layer_keymap: data.layer_keymap || []
+  };
+  selectedPin = null;
+  document.getElementById("editor").hidden = true;
+  document.getElementById("selInfo").textContent = "Click a blue/gold GPIO pin on the board";
+  document.getElementById("selInfo").className = "selected-none";
+  document.getElementById("layerPin").value = state.layer_pin_index;
+  document.getElementById("tapHold").value = state.tap_hold_s;
+  drawBoard();
+}
+
+function buildPayload() {
+  state.layer_pin_index = parseInt(document.getElementById("layerPin").value, 10) || 0;
+  state.tap_hold_s = parseFloat(document.getElementById("tapHold").value) || 0.03;
+  applyEditor();
+  return {
+    layer_pin_index: state.layer_pin_index,
+    tap_hold_s: state.tap_hold_s,
+    pins: state.pins,
+    labels: state.labels,
+    keymap: state.keymap.map(k => (k == null || k === "NONE" ? null : k)),
+    layer_keymap: state.layer_keymap.map(k => (k == null || k === "NONE" ? null : k))
+  };
+}
+
+function jsonText() {
+  return JSON.stringify(buildPayload(), null, 2);
+}
+
+async function writeFileHandle(handle, text) {
+  const writable = await handle.createWritable();
+  await writable.write(text);
+  await writable.close();
+}
+
+async function loadKeymapFromDir() {
+  if (!dirHandle) return;
+  try {
+    const fileHandle = await dirHandle.getFileHandle("keymap.json");
+    const file = await fileHandle.getFile();
+    const data = JSON.parse(await file.text());
+    applyLoadedData(data);
+    setStatus("Loaded keymap.json from " + (dirHandle.name || "CIRCUITPY"), "ok");
+  } catch (err) {
+    if (err.name === "NotFoundError") {
+      setStatus("No keymap.json yet — using defaults (Save will create it)", "ok");
+    } else {
+      setStatus("Could not read keymap.json: " + err.message, "err");
+      console.error(err);
+    }
+  }
+}
+
+async function saveToLinkedFolder() {
+  if (!dirHandle) {
+    setStatus("Link CIRCUITPY first", "err");
+    return;
+  }
+  try {
+    const fileHandle = await dirHandle.getFileHandle("keymap.json", { create: true });
+    await writeFileHandle(fileHandle, jsonText());
+    setStatus("Saved keymap.json — reset Pico", "ok");
+  } catch (err) {
+    setStatus("Save failed: " + err.message, "err");
+    console.error(err);
+  }
+}
+
+async function linkFolder() {
+  if (!canFS) {
+    setStatus("Need Chrome/Edge", "err");
+    alert("Linking a folder needs Chrome or Edge (File System Access API).");
+    return;
+  }
+  try {
+    dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+    const perm = await dirHandle.requestPermission({ mode: "readwrite" });
+    if (perm !== "granted") {
+      dirHandle = null;
+      setStatus("Permission denied", "err");
+      document.getElementById("btnSaveFolder").disabled = true;
+      document.getElementById("btnReload").disabled = true;
+      return;
+    }
+    document.getElementById("btnSaveFolder").disabled = false;
+    document.getElementById("btnReload").disabled = false;
+    setStatus("Linked: " + (dirHandle.name || "folder"), "ok");
+    await loadKeymapFromDir();
+  } catch (err) {
+    if (err.name !== "AbortError") setStatus("Link cancelled/failed", "err");
+  }
+}
+
+async function saveAsPicker() {
+  if (!canSavePicker) {
+    downloadBlob();
+    return;
+  }
+  try {
+    const handle = await window.showSaveFilePicker({
+      suggestedName: "keymap.json",
+      types: [{ description: "JSON", accept: { "application/json": [".json"] } }]
+    });
+    await writeFileHandle(handle, jsonText());
+    setStatus("Saved", "ok");
+  } catch (err) {
+    if (err.name !== "AbortError") setStatus("Save failed: " + err.message, "err");
+  }
+}
+
+function downloadBlob() {
+  const blob = new Blob([jsonText()], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "keymap.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  setStatus("Downloaded", "ok");
+}
+
+function drawBoard() {
+  const svg = document.getElementById("pico");
+  const layerPinName = state.pins[state.layer_pin_index] || "GP0";
+  const x0 = 70, y0 = 40, bodyW = 280, bodyH = 540;
+  const pitch = 24, padW = 18, padH = 10;
+  let html = "";
+
+  html += `
+    <defs>
+      <filter id="selGlow" x="-50%" y="-50%" width="200%" height="200%">
+        <feDropShadow dx="0" dy="0" stdDeviation="2.5" flood-color="#ff4d6d" flood-opacity="0.95"/>
+      </filter>
+    </defs>`;
+
+  html += `<rect x="${x0}" y="${y0}" width="${bodyW}" height="${bodyH}" rx="12" fill="#2d6b4f" stroke="#1a4030" stroke-width="2"/>`;
+  html += `<rect x="${x0 + bodyW/2 - 28}" y="${y0 - 14}" width="56" height="18" rx="3" fill="#222" stroke="#444"/>`;
+  html += `<text x="${x0 + bodyW/2}" y="${y0 + 28}" text-anchor="middle" fill="#a8e6c5" font-size="11" font-family="system-ui">Raspberry Pi Pico</text>`;
+  html += `<rect x="${x0 + bodyW/2 - 40}" y="${y0 + 200}" width="80" height="80" rx="4" fill="#1a1a1a" stroke="#333"/>`;
+  html += `<text x="${x0 + bodyW/2}" y="${y0 + 245}" text-anchor="middle" fill="#666" font-size="8">RP2040</text>`;
+
+  function drawSide(names, left) {
+    names.forEach((name, i) => {
+      const y = y0 + 50 + i * pitch;
+      const px = left ? x0 - padW : x0 + bodyW;
+      const tx = left ? x0 - padW - 4 : x0 + bodyW + padW + 4;
+      const anchor = left ? "end" : "start";
+      const editable = isEditablePin(name);
+      const idx = pinIndex(name);
+      const isLayer = editable && name === layerPinName;
+      const isSel = selectedPin === name;
+      const base = editable ? state.keymap[idx] : null;
+      const keyTxt = editable ? shortKey(base) : "";
+
+      let fill = "#5c6570";
+      if (editable) fill = isLayer ? "#e8a838" : "#3d8bfd";
+      if (isSel) fill = "#ff4d6d";
+
+      const cls = editable ? "pin-hit" : "pin-fixed";
+      const opacity = editable ? 1 : 0.55;
+      const filter = isSel ? ' filter="url(#selGlow)"' : "";
+      const stroke = isSel ? "#ffffff" : "#222";
+      const strokeW = isSel ? 2.5 : 1;
+
+      html += `<g class="${cls}" data-pin="${name}" opacity="${opacity}"${filter}>`;
+      if (editable) {
+        const hx = left ? px - 6 : px - 4;
+        html += `<rect x="${hx}" y="${y - 4}" width="${padW + 10}" height="${padH + 8}" fill="transparent"/>`;
+      }
+      html += `<rect class="pin-pad" x="${px}" y="${y}" width="${padW}" height="${padH}" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"/>`;
+      if (isSel) {
+        html += `<rect x="${px - 3}" y="${y - 3}" width="${padW + 6}" height="${padH + 6}" rx="3" fill="none" stroke="#ff4d6d" stroke-width="2"/>`;
+        html += `<rect x="${px - 5}" y="${y - 5}" width="${padW + 10}" height="${padH + 10}" rx="4" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1"/>`;
+      }
+      const labelFill = isSel ? "#ffe0e6" : (editable ? "#cde" : "#889");
+      html += `<text x="${tx}" y="${y + 8}" text-anchor="${anchor}" fill="${labelFill}" font-size="${isSel ? 8 : 7}" font-weight="${isSel ? 700 : 400}" font-family="ui-monospace,monospace" pointer-events="none">${name}</text>`;
+      if (keyTxt) {
+        const kx = left ? x0 + 8 : x0 + bodyW - 8;
+        html += `<text x="${kx}" y="${y + 8}" text-anchor="${left ? "start" : "end"}" fill="#fff" font-size="6.5" font-weight="600" font-family="system-ui" pointer-events="none">${keyTxt}</text>`;
+      }
+      html += `</g>`;
+    });
+  }
+
+  drawSide(LEFT_PINS, true);
+  drawSide(RIGHT_PINS, false);
+  svg.innerHTML = html;
+
+  svg.querySelectorAll(".pin-hit").forEach(g => {
+    g.addEventListener("click", () => selectPin(g.getAttribute("data-pin")));
+  });
+}
+
+function selectPin(name) {
+  if (!isEditablePin(name)) {
+    setStatus(name + " cannot be mapped", "err");
+    return;
+  }
+  selectedPin = name;
+  const idx = pinIndex(name);
+  document.getElementById("selInfo").textContent = "";
+  document.getElementById("selInfo").className = "";
+  document.getElementById("editor").hidden = false;
+  document.getElementById("selPin").textContent = name + "  ·  index " + idx;
+  document.getElementById("selLabel").value = (state.labels && state.labels[idx]) || "";
+  fillSelect(document.getElementById("selBase"), state.keymap[idx]);
+  fillSelect(document.getElementById("selLayer"), state.layer_keymap[idx]);
+  drawBoard();
+  setStatus("Editing " + name, "ok");
+}
+
+function applyEditor() {
+  if (!selectedPin || !isEditablePin(selectedPin)) return;
+  const idx = pinIndex(selectedPin);
+  if (idx < 0) return;
+  if (!state.labels) state.labels = [];
+  state.labels[idx] = document.getElementById("selLabel").value;
+  const b = document.getElementById("selBase").value;
+  const l = document.getElementById("selLayer").value;
+  state.keymap[idx] = b === "NONE" ? null : b;
+  state.layer_keymap[idx] = l === "NONE" ? null : l;
+  drawBoard();
+}
+
+document.getElementById("selLabel").addEventListener("change", applyEditor);
+document.getElementById("selBase").addEventListener("change", applyEditor);
+document.getElementById("selLayer").addEventListener("change", applyEditor);
+document.getElementById("layerPin").addEventListener("change", () => {
+  state.layer_pin_index = parseInt(document.getElementById("layerPin").value, 10) || 0;
+  drawBoard();
+});
+
+document.getElementById("btnFolder").onclick = linkFolder;
+document.getElementById("btnReload").onclick = loadKeymapFromDir;
+document.getElementById("btnSaveFolder").onclick = saveToLinkedFolder;
+document.getElementById("btnSaveAs").onclick = saveAsPicker;
+document.getElementById("btnDownload").onclick = downloadBlob;
+
+document.getElementById("reset").onclick = () => {
+  state = structuredClone(DEFAULT);
+  selectedPin = null;
+  document.getElementById("editor").hidden = true;
+  document.getElementById("selInfo").textContent = "Click a blue/gold GPIO pin on the board";
+  document.getElementById("selInfo").className = "selected-none";
+  document.getElementById("layerPin").value = state.layer_pin_index;
+  document.getElementById("tapHold").value = state.tap_hold_s;
+  drawBoard();
+  setStatus("Defaults restored");
+};
+
+document.getElementById("load").onchange = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const data = JSON.parse(await file.text());
+    applyLoadedData(data);
+    setStatus("Loaded " + file.name, "ok");
+  } catch (err) {
+    setStatus("Load failed", "err");
+    alert("Could not load JSON: " + err.message);
+  }
+  e.target.value = "";
+};
+
+if (!canFS) {
+  document.getElementById("btnFolder").disabled = true;
+  document.getElementById("btnSaveFolder").disabled = true;
+  document.getElementById("btnReload").disabled = true;
+  setStatus("Use Load/Download (non-Chromium browser)");
+}
+
+drawBoard();
+</script>
+</body>
+</html>
