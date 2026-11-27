@@ -1,10 +1,10 @@
-This is a low cost, low-overhead keyboard encoder script for the Raspberry Pi Pico RP2040 devices. It is based on original code examples from Jeff Epler and the original Picoder code from Don Panetta at the KLOV message board. It has been updated by me to support the latest circuitphython and hybrid boot+NKRO HID descriptor. It will allow you to have a fully featured encoder for your MAME arcade or indie game project without the high cost of a Ultimarc Ipac. The latest build also includes a shifted function to add additional keys for utility functions, shortcuts etc which now brings it closer to full Ipac functionality. The code is written in Python using the circuitpython bootloader and libraries. You will need to install the CircuitPython boot-loader then write the Picoder code and libraries. It's a small process so please follow the instructions carefully.
+Picoder is a low cost, low-overhead keyboard encoder script for the Raspberry Pi Pico RP2040 devices aimed primarily for emulators like MAME and indie games. It is based on original code examples from Jeff Epler and the original Picoder code from Don Panetta at the KLOV message board. It has been updated by me to support the latest circuitphython and hybrid boot+NKRO HID descriptor. It will allow you to have a fully featured encoder for your MAME arcade or indie game project without the high cost of a Ultimarc Ipac. The latest build also includes a shifted function to add additional keys for utility functions. The code is written in Python using the circuitpython bootloader and libraries.
 
 
 
 
 
-Quick instructions
+## **Quick instructions:**
 
 -Download the picoder UF2 firmware.
 
@@ -12,7 +12,7 @@ Quick instructions
 
 -Drag the picoder UF2 firmware into your Pico drive folder. Your Pico may restart once or twice and then reappear. Picoder is already configured using default MAME keys.
 
-Manual Instructions:
+## **Manual Instructions:**
 
 -Download the CircuitPython 10x UF2 bootloader from https://circuitpython.org/board/raspberry_pi_pico/
 
@@ -25,7 +25,7 @@ Manual Instructions:
 See provided picoder_pinout.jpg for the standard corresponding pins. You can test your keys and Rollover code by using Microsoft's Keyboard Ghosting Demo
 https://www.microsoft.com/applied-sciences/projects/anti-ghosting-demo
 
-Editing keys:
+## **Editing keys:**
 &#x20;   Open your pico's storage drive and open picoder-config.html using your favorite web browser. Chrome and Chromium derivative browsers will allow you to edit your entire circuitpython directory from within the browser. Simply click on the "Link to circuitpython" button at the top and Chrome based browsers will automatically load the keymap that is currently on your pico. If you are using other browsers you will have to load your keymap by clicking on the "Load JSON" link and pointing your browser to the location of your JSON. By manually loading and saving your JSON keymap file you can also have multiple keymap configurations saved on your Pico's drive. 
 
 Editing keys is a simple as clicking on the corresponding pin on the web image of the pico and changing the key in the dropdown menu. 
