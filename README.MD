@@ -32,6 +32,6 @@ Editing keys is a simple as clicking on the corresponding pin on the web image o
 
 ![](picoder_web_config.jpg)
 
-Default Keys:
+## **Default Key Map:**
 Picoder is configured out of the box to have the following key configuration mapped to MAME.
 ![](picoder_pinout.jpg)
